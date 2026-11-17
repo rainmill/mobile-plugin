@@ -238,3 +238,170 @@ fn the_admin_screens_load() {
     registry.set_owner(module.id());
     module.register(&mut registry);
 }
+
+mod build_files {
+    use std::sync::Arc;
+
+    use laterite_core::testing::connect_test;
+    use laterite_media::{record, LocalDisk, StorageDriver};
+    use rainmill_mobile::files::{self, Build, FileError};
+
+    fn build(n: i64) -> Build {
+        Build {
+            platform: "android".into(),
+            version: "1.4.0".into(),
+            build: n,
+            track: "production".into(),
+            notes: "Faster start.".into(),
+        }
+    }
+
+    #[tokio::test]
+    async fn a_pipeline_uploads_with_the_apps_token_and_the_file_follows_the_apps_choice() {
+        let (db, _guard) = connect_test(&[
+            laterite_media::migrations::migrations(),
+            rainmill_mobile::module().migrations(),
+        ])
+        .await;
+        let dir = std::env::temp_dir().join(format!("rainmill-mobile-{}", std::process::id()));
+        let disk: Arc<dyn StorageDriver> = Arc::new(LocalDisk::new(&dir));
+        let id = super::insert(
+            &db,
+            "mobile_apps",
+            &[("name", "Acme".into()), ("slug", "acme".into())],
+        )
+        .await;
+
+        // No token made yet, then a wrong one, then the right one.
+        assert!(matches!(
+            files::app_for_token(&db, "acme", "").await,
+            Err(FileError::Refused)
+        ));
+        let (token, hash) = files::new_token();
+        assert!(token.starts_with("latm_") && token.len() == 69 && !hash.contains(&token[5..]));
+        files::set_token(&db, id, &hash).await.unwrap();
+        assert!(matches!(
+            files::app_for_token(&db, "acme", "latm_wrong").await,
+            Err(FileError::Refused)
+        ));
+        assert!(matches!(
+            files::app_for_token(&db, "other", &token).await,
+            Err(FileError::Refused)
+        ));
+        let app = files::app_for_token(&db, "acme", &token).await.unwrap();
+        assert!(!app.files_in_library);
+
+        // The same build twice is one release; a bad platform is refused.
+        let now = "2026-11-18T10:00:00Z";
+        let release = files::release_for(&db, app.id, &build(42), now)
+            .await
+            .unwrap();
+        assert_eq!(
+            files::release_for(&db, app.id, &build(42), now)
+                .await
+                .unwrap(),
+            release
+        );
+        let bad = Build {
+            platform: "symbian".into(),
+            ..build(1)
+        };
+        assert!(matches!(
+            files::release_for(&db, app.id, &bad, now).await,
+            Err(FileError::Input(_))
+        ));
+
+        // Attached to the release alone: out of the library, and gone when removed.
+        assert!(matches!(
+            files::add(
+                &db,
+                disk.as_ref(),
+                &app,
+                release,
+                "notes.txt",
+                b"x".to_vec(),
+                None
+            )
+            .await,
+            Err(FileError::Kind)
+        ));
+        assert!(matches!(
+            files::add(
+                &db,
+                disk.as_ref(),
+                &app,
+                release,
+                "app.aab",
+                Vec::new(),
+                None
+            )
+            .await,
+            Err(FileError::Size)
+        ));
+        let one = files::add(
+            &db,
+            disk.as_ref(),
+            &app,
+            release,
+            "../up/app.aab",
+            b"PK\x03\x04 one".to_vec(),
+            None,
+        )
+        .await
+        .unwrap();
+        let two = files::add(
+            &db,
+            disk.as_ref(),
+            &app,
+            release,
+            "app.apk",
+            b"PK\x03\x04 two".to_vec(),
+            None,
+        )
+        .await
+        .unwrap();
+        let held = files::of_release(&db, release).await.unwrap();
+        assert_eq!(
+            held.iter()
+                .map(|f| f.display_name().to_string())
+                .collect::<Vec<_>>(),
+            ["app.aab", "app.apk"]
+        );
+        assert!(held.iter().all(|f| !f.in_library && f.disk == files::DISK));
+        assert!(files::remove(&db, release, one.media_id).await.unwrap());
+        assert!(!files::remove(&db, release, one.media_id).await.unwrap());
+        assert!(record::find(&db, one.media_id).await.unwrap().is_none());
+
+        // Kept in the library: listed there, and it stays when taken off the release.
+        let library = files::App {
+            files_in_library: true,
+            ..app.clone()
+        };
+        let three = files::add(
+            &db,
+            disk.as_ref(),
+            &library,
+            release,
+            "app.ipa",
+            b"PK\x03\x04 three".to_vec(),
+            None,
+        )
+        .await
+        .unwrap();
+        assert!(
+            record::find(&db, three.media_id)
+                .await
+                .unwrap()
+                .unwrap()
+                .in_library
+        );
+        assert!(files::remove(&db, release, three.media_id).await.unwrap());
+        assert!(record::find(&db, three.media_id).await.unwrap().is_some());
+        assert_eq!(files::of_release(&db, release).await.unwrap().len(), 1);
+        assert_eq!(
+            files::of_release(&db, release).await.unwrap()[0].id,
+            two.media_id
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}

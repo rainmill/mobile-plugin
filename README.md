@@ -102,6 +102,35 @@ Under Settings, Credentials, add a **Google Play** credential, choose the app it
 
 A failure says what to change: the Google Play Android Developer API to enable, the address to invite in Play Console, or a package name Play does not have. Nothing in Play Console changes.
 
+## Build files
+
+A release holds its build files (AAB, APK, IPA or ZIP, up to 256 MB each) on the private disk. Each app chooses where they are listed:
+
+| "Keep build files in the media library" | A build file |
+| --- | --- |
+| Off | Is attached to its release alone; removing it deletes it |
+| On | Is also listed in the media library; removing it from the release leaves it there |
+
+On an app's page, **Build files** lists each release's files and takes an upload, and **New upload token** makes the token a pipeline sends. The token is shown once and only its hash is kept; a new one replaces it.
+
+```sh
+curl --fail-with-body -X POST \
+  "https://acme.com/mobile/v1/releases?app=acme&platform=android&version=1.4.0&build=10400&file=app.aab" \
+  -H "Authorization: Bearer $LATERITE_UPLOAD_TOKEN" \
+  --data-binary @app/build/outputs/bundle/release/app-release.aab
+```
+
+| Parameter | Value |
+| --- | --- |
+| `app` | The app's key |
+| `platform` | `android`, `ios` or `web` |
+| `version`, `build` | The version people see and the build number |
+| `track` | `internal`, `beta` or `production`; `production` when left out |
+| `file` | The file's name, with its extension |
+| `notes` | What changed, for a release this upload creates |
+
+The upload joins the release of that platform, build and track, making it as a draft when there is none, and answers `201` with `{"uploaded": true, "release_id", "file_id", "blake3", "size"}`. `401` is a wrong token, `400` a wrong parameter or file type, `413` a file over the limit. A pipeline that checks for `"uploaded": true` cannot mistake a skipped step for a release.
+
 ## Permissions
 
 | Permission | Allows |

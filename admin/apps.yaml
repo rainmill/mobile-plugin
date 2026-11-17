@@ -15,6 +15,9 @@ list:
 form:
   title: App
   timestamps: true
+  actions:
+    - { label: Build files, action: "rainmill/mobile/tools/apps/{id}/files", method: get }
+    - { label: New upload token, action: "rainmill/mobile/tools/apps/{id}/token", confirm: 'Make a new upload token? A pipeline using the current one stops being able to upload.' }
   fields:
     name: { span: 1/2, rules: [required, { max_length: 120 }] }
     slug:
@@ -23,6 +26,10 @@ form:
       rules: [required, { max_length: 80 }, unique]
       help: 'Such as acme; the app sends it when it checks in.'
     description: { type: textarea }
+    files_in_library:
+      type: switch
+      label: Keep build files in the media library
+      help: 'Off: a build file is attached to its release alone. On: it is also listed in the media library, on the private disk.'
 relations:
   platforms:
     label: Platform

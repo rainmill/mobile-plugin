@@ -20,6 +20,11 @@ laterite-core = "0.11"
 laterite-admin = "0.11"
 # Store, signing and push credentials are vault items, each belonging to an app.
 rainmill-vault = "0.1"
+# A release's build files are media records, in the library or out of it.
+laterite-media = "0.11"
+# Hashes an upload token; the token itself is never stored.
+blake3 = "1"
+rand = "0.8"
 # Calls the Google Play Developer API and Google's token endpoint.
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 # Signs the service account's token request (RS256).
@@ -30,5 +35,6 @@ serde = { version = "1", features = ["derive"] }
 thiserror = "1"
 
 [dev-dependencies]
+laterite-media = "0.11"
 laterite-core = { version = "0.11", features = ["sqlite", "postgres", "testing"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

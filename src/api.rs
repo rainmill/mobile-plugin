@@ -18,6 +18,8 @@ use crate::store::{self, Seen};
 
 /// Where an app checks in.
 pub const HELLO_PATH: &str = "/mobile/v1/hello";
+/// Where a pipeline sends a build file.
+pub const RELEASES_PATH: &str = "/mobile/v1/releases";
 /// Apple's file naming the apps that open this site's links.
 pub const APPLE_PATH: &str = "/.well-known/apple-app-site-association";
 /// Android's file naming the apps that open this site's links.
@@ -225,6 +227,120 @@ impl PublicRoute for LinkFile {
         Router::new()
             .route("/", get(move |State(db): State<Db>| link_file(db, kind)))
             .with_state(ctx.db().clone())
+    }
+}
+
+/// What a pipeline says about the build it sends, as query parameters.
+#[derive(Debug, Deserialize)]
+pub struct Upload {
+    /// The app's slug.
+    pub app: String,
+    /// `android`, `ios` or `web`.
+    pub platform: String,
+    /// The version people see.
+    pub version: String,
+    /// The build number.
+    pub build: i64,
+    /// `internal`, `beta` or `production`; `production` when left out.
+    #[serde(default)]
+    pub track: String,
+    /// The file's name, with its extension.
+    pub file: String,
+    /// What changed, for a release this upload creates.
+    #[serde(default)]
+    pub notes: String,
+}
+
+#[derive(Clone)]
+struct UploadState {
+    db: Db,
+    disk: Arc<dyn laterite_media::StorageDriver>,
+}
+
+async fn release_upload(
+    State(state): State<UploadState>,
+    laterite_admin::axum::extract::Query(upload): laterite_admin::axum::extract::Query<Upload>,
+    headers: laterite_admin::axum::http::HeaderMap,
+    body: laterite_admin::axum::body::Bytes,
+) -> Response {
+    use crate::files::{self, FileError};
+    let token = headers
+        .get(header::AUTHORIZATION)
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.strip_prefix("Bearer "))
+        .unwrap_or_default()
+        .trim();
+    let refuse = |e: FileError| {
+        let status = match e {
+            FileError::Refused => StatusCode::UNAUTHORIZED,
+            FileError::Kind | FileError::Input(_) => StatusCode::BAD_REQUEST,
+            FileError::Size => StatusCode::PAYLOAD_TOO_LARGE,
+            FileError::Store(_) => StatusCode::SERVICE_UNAVAILABLE,
+        };
+        problem(status, "upload", &e.to_string())
+    };
+    let app = match files::app_for_token(&state.db, upload.app.trim(), token).await {
+        Ok(app) => app,
+        Err(e) => return refuse(e),
+    };
+    let build = files::Build {
+        platform: upload.platform.trim().to_string(),
+        version: upload.version,
+        build: upload.build,
+        track: if upload.track.trim().is_empty() {
+            "production".into()
+        } else {
+            upload.track.trim().to_string()
+        },
+        notes: upload.notes,
+    };
+    let release = match files::release_for(&state.db, app.id, &build, &now()).await {
+        Ok(id) => id,
+        Err(e) => return refuse(e),
+    };
+    match files::add(
+        &state.db,
+        state.disk.as_ref(),
+        &app,
+        release,
+        &upload.file,
+        body.to_vec(),
+        None,
+    )
+    .await
+    {
+        Ok(stored) => (
+            StatusCode::CREATED,
+            Json(json!({
+                "uploaded": true,
+                "release_id": stored.release_id,
+                "file_id": stored.media_id,
+                "blake3": stored.hash,
+                "size": stored.size,
+            })),
+        )
+            .into_response(),
+        Err(e) => refuse(e),
+    }
+}
+
+pub(crate) struct ReleasesRoute;
+
+impl PublicRoute for ReleasesRoute {
+    fn mount(&self, ctx: &RouteCtx) -> Router {
+        let state = UploadState {
+            db: ctx.db().clone(),
+            disk: crate::files::disk(
+                &ctx.contributions::<laterite_media::DiskReg>(),
+                ctx.storage_dir(),
+            ),
+        };
+        Router::new()
+            .route("/", post(release_upload))
+            .layer(laterite_admin::axum::extract::DefaultBodyLimit::max(
+                usize::try_from(crate::files::LIMIT).unwrap_or(usize::MAX) + 1024,
+            ))
+            .with_state(state)
     }
 }
 

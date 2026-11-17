@@ -9,11 +9,13 @@
 
 pub mod api;
 mod check;
+pub mod files;
 pub mod guide;
 mod migrations;
 pub mod play;
 pub mod policy;
 pub mod store;
+mod tools;
 
 use std::sync::Arc;
 
@@ -132,6 +134,16 @@ impl Module for MobileModule {
         registry.add_public_route(
             PublicRouteReg::new(api::HELLO_PATH, api::hello_route()).skip_origin_check(),
         );
+        // A pipeline authenticates each upload with the app's token.
+        registry.add_public_route(
+            PublicRouteReg::new(api::RELEASES_PATH, Arc::new(api::ReleasesRoute))
+                .skip_origin_check(),
+        );
+        registry.add_screen(laterite_admin::routes::ScreenReg::new(
+            "/tools",
+            MANAGE,
+            Arc::new(tools::Tools),
+        ));
         registry.add_public_route(PublicRouteReg::new(
             api::APPLE_PATH,
             Arc::new(api::LinkFile("ios")),
