@@ -17,6 +17,7 @@ jobs:
       - name: Patch in the main branches
         run: |
           git clone --depth 1 https://github.com/lateritecmf/laterite ../laterite
+          git clone --depth 1 https://github.com/rainmill/vault-plugin ../vault-plugin
           mkdir -p .cargo
           cat > .cargo/config.toml <<'EOF'
           [patch.crates-io]
@@ -26,6 +27,7 @@ jobs:
           laterite-macros = { path = "../laterite/crates/macros" }
           laterite-media = { path = "../laterite/crates/media" }
           laterite-web = { path = "../laterite/crates/web" }
+          rainmill-vault = { path = "../vault-plugin" }
           EOF
       - uses: dtolnay/rust-toolchain@stable
         with:

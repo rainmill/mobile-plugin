@@ -26,6 +26,8 @@ pub const MODULE_ID: &str = migrations::MODULE_ID;
 pub const MANAGE: &str = "rainmill.mobile.manage";
 /// Seeing the devices that checked in.
 pub const DEVICES: &str = "rainmill.mobile.devices";
+/// The vault scope a credential of one app carries.
+pub const APP_SCOPE: &str = "rainmill.mobile.app";
 /// The menu section holding the screens.
 pub const SECTION: &str = "rainmill.mobile";
 
@@ -37,6 +39,8 @@ pub fn module() -> Box<dyn Module> {
 /// The Rainmill Mobile plugin.
 pub struct MobileModule;
 
+const REQUIRES: &[ModuleId] = &[ModuleId::new("rainmill.vault")];
+
 #[async_trait]
 impl Module for MobileModule {
     fn id(&self) -> ModuleId {
@@ -47,7 +51,17 @@ impl Module for MobileModule {
         migrations::migrations()
     }
 
+    fn requires(&self) -> &'static [ModuleId] {
+        REQUIRES
+    }
+
     fn register(&self, registry: &mut Registry) {
+        registry.add(rainmill_vault::ScopeReg::table(
+            APP_SCOPE,
+            t!("App"),
+            "mobile_apps",
+            "name",
+        ));
         let group = || t!("Apps");
         registry.add_permission(Permission::new(
             MANAGE,

@@ -10,7 +10,7 @@ App management for a [Laterite](https://laterite.rs) application.
 
 ## Requirements
 
-Laterite 0.11.
+Laterite 0.11 and `rainmill-vault`. A credential in the vault can belong to one app (scope `rainmill.mobile.app`).
 
 ## Installation
 
@@ -19,7 +19,7 @@ Laterite 0.11.
 rainmill-mobile = "0.1"
 ```
 
-Add `rainmill_mobile::module()` to the application's modules.
+Add `rainmill_mobile::module()` to the application's modules, after `rainmill_vault::module()`.
 
 ## The check-in
 
