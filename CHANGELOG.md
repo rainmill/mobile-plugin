@@ -10,3 +10,4 @@ bump is breaking and a patch is additive.
 ### Added
 
 - First cut. Apps with Android, iOS and web platforms, a check-in endpoint answering with flags, maintenance, updates and banners, release records, a devices list, and the association files that let links open the app.
+- A Google Play credential with a Preflight that tries the key, the Developer API and access to the app, and a publishing guide under Apps.

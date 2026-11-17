@@ -84,6 +84,24 @@ A platform's own "must update below" and "asked to update below" builds apply to
 | `/.well-known/apple-app-site-association` | iOS platforms with a team ID, and the paths each opens |
 | `/.well-known/assetlinks.json` | Android platforms with a signing fingerprint |
 
+## Publishing to Google Play
+
+Apps, Publishing guide lists the steps from no store listing to a release that publishes itself, each with where it is done and whether it needs a person.
+
+Under Settings, Credentials, add a **Google Play** credential, choose the app it belongs to, and press **Preflight**.
+
+| Field | Where it comes from |
+| --- | --- |
+| Service account key | Google Cloud, IAM and Admin, Service accounts, the account, Keys, Add key, JSON |
+| Package name | Play Console, as the app shows it (`com.acme.app`) |
+
+| Preflight part | Tries |
+| --- | --- |
+| Service account key | Google accepts the key |
+| Developer API enabled, and access to the app | Opens a draft edit, reads each track's newest build, discards the edit |
+
+A failure says what to change: the Google Play Android Developer API to enable, the address to invite in Play Console, or a package name Play does not have. Nothing in Play Console changes.
+
 ## Permissions
 
 | Permission | Allows |

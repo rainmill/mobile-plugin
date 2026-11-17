@@ -8,7 +8,10 @@
 #![warn(missing_docs)]
 
 pub mod api;
+mod check;
+pub mod guide;
 mod migrations;
+pub mod play;
 pub mod policy;
 pub mod store;
 
@@ -28,6 +31,10 @@ pub const MANAGE: &str = "rainmill.mobile.manage";
 pub const DEVICES: &str = "rainmill.mobile.devices";
 /// The vault scope a credential of one app carries.
 pub const APP_SCOPE: &str = "rainmill.mobile.app";
+/// The vault kind of a Google Play service account.
+pub const PLAY_KIND: &str = "rainmill.mobile.google_play";
+/// The vault slot a release to Google Play uses.
+pub const PLAY_SLOT: &str = "rainmill.mobile.google_play";
 /// The menu section holding the screens.
 pub const SECTION: &str = "rainmill.mobile";
 
@@ -77,6 +84,49 @@ impl Module for MobileModule {
             .add_nav(laterite_admin::nav::NavItem::section(SECTION, t!("Apps")).icon("smartphone"));
         registry.add_resource(laterite_admin::resource!("admin/apps.yaml"));
         registry.add_resource(laterite_admin::resource!("admin/devices.yaml"));
+        registry.add_screen(
+            laterite_admin::routes::ScreenReg::new("/guide", MANAGE, Arc::new(guide::Guide))
+                .in_menu(t!("Publishing guide"))
+                .menu(
+                    laterite_admin::nav::Placement::new()
+                        .under(SECTION)
+                        .icon("rocket")
+                        .order(3),
+                ),
+        );
+        registry.add(
+            rainmill_vault::KindReg::new(PLAY_KIND, t!("Google Play"))
+                .help(t!(
+                    "A Google Cloud service account invited to the app in Play Console, with the Google Play Android Developer API enabled on its project. The publishing guide under Apps has the steps."
+                ))
+                .field(
+                    laterite_admin::form::FormField::of("key", t!("Service account key"), "sensitive")
+                        .options(laterite_core::serde_json::json!({ "file": true, "accept": [".json"], "max_size": "16kb" }))
+                        .required()
+                        .help(t!("The JSON key file Google Cloud downloads under the service account's Keys.")),
+                )
+                .field(
+                    laterite_admin::form::FormField::text("package_name", t!("Package name"))
+                        .required()
+                        .help(t!("Such as com.acme.app, as Play Console shows it.")),
+                ),
+        );
+        registry.add(
+            rainmill_vault::SlotReg::single(PLAY_SLOT, PLAY_KIND)
+                .label(t!("Releases to Google Play"))
+                .reason(t!(
+                    "Reads an app's tracks, and uploads a release when asked to."
+                )),
+        );
+        registry.add(
+            rainmill_vault::ActionReg::new(
+                PLAY_KIND,
+                "preflight",
+                t!("Preflight"),
+                Arc::new(check::Preflight),
+            )
+            .icon("plug"),
+        );
         // An app authenticates nothing here and sends no Origin; the endpoint
         // refuses any identifier that is not registered.
         registry.add_public_route(
