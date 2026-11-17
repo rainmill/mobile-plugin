@@ -1,0 +1,27 @@
+[package]
+name = "rainmill-mobile"
+version = "0.1.0"
+description = "App management for Laterite: apps with their Android, iOS and web platforms, feature flags, maintenance mode and required updates decided by one policy engine, release records with changelogs, and the devices that check in"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/rainmill/mobile-plugin"
+publish = false
+
+# Marks this crate as a Laterite plugin and names the module it registers, so a
+# tool can tell what it is without building it. Which Laterite it supports is
+# stated by the dependency requirement below, never repeated here.
+[package.metadata.laterite]
+plugin = "rainmill.mobile"
+
+[dependencies]
+# Laterite crates are version-only so this manifest is location-independent
+# (identical whether dev-symlinked under an app's plugins/ tree or vendored).
+laterite-core = "0.11"
+laterite-admin = "0.11"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+serde = { version = "1", features = ["derive"] }
+thiserror = "1"
+
+[dev-dependencies]
+laterite-core = { version = "0.11", features = ["sqlite", "postgres", "testing"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

@@ -1,0 +1,221 @@
+entity: mobile_apps
+path: /apps
+title: Apps
+permission: rainmill.mobile.manage
+menu: { under: rainmill.mobile, icon: smartphone, order: 1 }
+list:
+  creatable: true
+  deletable: true
+  order_by: name
+  no_records_message: No apps yet. Add the first one, then its platforms.
+  columns:
+    name: { searchable: true }
+    slug: { searchable: true, label: Key }
+    updated_at: { type: datetime, label: Changed }
+form:
+  title: App
+  timestamps: true
+  fields:
+    name: { span: 1/2, rules: [required, { max_length: 120 }] }
+    slug:
+      span: 1/2
+      label: Key
+      rules: [required, { max_length: 80 }, unique]
+      help: 'Such as acme; the app sends it when it checks in.'
+    description: { type: textarea }
+relations:
+  platforms:
+    label: Platform
+    title: Platforms
+    entity: mobile_platforms
+    foreign_key: app_id
+    delete: true
+    list:
+      columns:
+        kind:
+          label: Platform
+          labels:
+            - { value: android, label: Android }
+            - { value: ios, label: iOS }
+            - { value: web, label: Web }
+        identifier: {}
+        environment: {}
+        variant: {}
+        min_build: { label: Must update below }
+        recommended_build: { label: Asked to update below }
+    form:
+      timestamps: true
+      fields:
+        kind:
+          label: Platform
+          type: select
+          span: 1/3
+          rules: [required]
+          options:
+            - { value: android, label: Android }
+            - { value: ios, label: iOS }
+            - { value: web, label: Web }
+        identifier:
+          span: 2/3
+          rules: [required, { max_length: 200 }]
+          help: 'The package name (com.acme.app), bundle ID or hostname. A build naming another is refused.'
+        environment:
+          type: select
+          span: 1/3
+          rules: [required]
+          options:
+            - { value: production, label: Production }
+            - { value: staging, label: Staging }
+            - { value: development, label: Development }
+        variant:
+          span: 2/3
+          help: 'The product flavor or build configuration, when the app has several.'
+        updates: { type: section, label: Updates }
+        min_build: { label: Must update below build, input: number, min: 0, span: 1/3 }
+        recommended_build: { label: Asked to update below build, input: number, min: 0, span: 1/3 }
+        store_url: { label: Store page, input: url, span: 1/3 }
+        links: { type: section, label: Links that open the app }
+        team_id:
+          label: Apple team ID
+          span: 1/3
+          trigger: { action: show, field: kind, condition: "value[ios]" }
+        store_id:
+          label: App Store ID
+          span: 1/3
+          trigger: { action: show, field: kind, condition: "value[ios]" }
+        fingerprints:
+          label: Signing certificate fingerprints
+          type: textarea
+          help: 'SHA-256, one a line.'
+          trigger: { action: show, field: kind, condition: "value[android]" }
+        link_paths:
+          label: Paths the app opens
+          type: textarea
+          help: 'One a line, such as /events/*. Every path when empty.'
+          trigger: { action: show, field: kind, condition: "value[ios]" }
+  policies:
+    label: Policy
+    title: Flags, maintenance and updates
+    entity: mobile_policies
+    foreign_key: app_id
+    delete: true
+    list:
+      columns:
+        kind:
+          type: status_pill
+          labels:
+            - { value: flag, label: Flag }
+            - { value: maintenance, label: Maintenance }
+            - { value: update, label: Update }
+            - { value: banner, label: Banner }
+        key: { label: Name }
+        value: {}
+        enabled: { type: boolean, label: "On" }
+        platform: {}
+        environment: {}
+        percent: { label: "%" }
+    form:
+      timestamps: true
+      fields:
+        kind:
+          type: select
+          span: 1/3
+          rules: [required]
+          options:
+            - { value: flag, label: Feature flag }
+            - { value: maintenance, label: Maintenance }
+            - { value: update, label: Update }
+            - { value: banner, label: Banner }
+        key:
+          label: Name
+          span: 1/3
+          rules: [required, { max_length: 80 }]
+          help: 'The name the app reads a flag by.'
+        enabled: { type: switch, label: "On", span: 1/3 }
+        value:
+          help: 'A flag: true, false, a number, text or JSON. An update: soft (may dismiss) or hard (must update).'
+          trigger: { action: show, field: kind, condition: "value[flag][update]" }
+        message:
+          type: textarea
+          help: 'What the person reads.'
+          trigger: { action: show, field: kind, condition: "value[maintenance][update][banner]" }
+        who: { type: section, label: Who it applies to (everyone where a field is empty) }
+        platform:
+          type: select
+          span: 1/3
+          options:
+            - { value: "", label: Every platform }
+            - { value: android, label: Android }
+            - { value: ios, label: iOS }
+            - { value: web, label: Web }
+        environment:
+          type: select
+          span: 1/3
+          options:
+            - { value: "", label: Every environment }
+            - { value: production, label: Production }
+            - { value: staging, label: Staging }
+            - { value: development, label: Development }
+        percent: { label: Share of installs (%), input: number, min: 1, max: 100, span: 1/3 }
+        min_build: { label: From build, input: number, min: 0, span: 1/3 }
+        max_build: { label: Up to build, input: number, min: 0, span: 1/3 }
+        locales: { span: 1/3, help: 'Comma separated, such as en, hi-IN.' }
+        starts_at: { label: From, span: 1/2, placeholder: '2026-11-20T18:00:00Z', help: 'UTC. Now when empty.' }
+        ends_at: { label: Until, span: 1/2, placeholder: '2026-11-20T20:00:00Z', help: 'UTC. Until turned off when empty.' }
+        note: { type: textarea, help: 'For the team; the app never sees it.' }
+  releases:
+    label: Release
+    title: Releases
+    entity: mobile_releases
+    foreign_key: app_id
+    delete: true
+    list:
+      order_by: build
+      order_dir: desc
+      columns:
+        platform:
+          labels:
+            - { value: android, label: Android }
+            - { value: ios, label: iOS }
+            - { value: web, label: Web }
+        version: {}
+        build: {}
+        track: {}
+        state:
+          type: status_pill
+          labels:
+            - { value: draft, label: Draft }
+            - { value: released, label: Released }
+            - { value: withdrawn, label: Withdrawn }
+        released_at: { type: date, label: Released }
+    form:
+      timestamps: true
+      fields:
+        platform:
+          type: select
+          span: 1/4
+          rules: [required]
+          options:
+            - { value: android, label: Android }
+            - { value: ios, label: iOS }
+            - { value: web, label: Web }
+        version: { span: 1/4, rules: [required, { max_length: 40 }], placeholder: 1.4.0 }
+        build: { span: 1/4, input: number, min: 0, rules: [required] }
+        track:
+          type: select
+          span: 1/4
+          rules: [required]
+          options:
+            - { value: production, label: Production }
+            - { value: beta, label: Beta }
+            - { value: internal, label: Internal }
+        state:
+          type: select
+          span: 1/4
+          rules: [required]
+          options:
+            - { value: draft, label: Draft }
+            - { value: released, label: Released }
+            - { value: withdrawn, label: Withdrawn }
+        released_at: { type: date, label: Released on, span: 1/4 }
+        changelog: { type: markdown, label: What changed }

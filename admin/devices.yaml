@@ -1,0 +1,39 @@
+entity: mobile_devices
+path: /devices
+title: Devices
+permission: rainmill.mobile.devices
+menu: { under: rainmill.mobile, icon: smartphone, order: 2 }
+list:
+  exportable: true
+  order_by: last_seen_at
+  order_dir: desc
+  no_records_message: No device has checked in yet.
+  search: { prompt: Search by install or model }
+  filters:
+    platform:
+      type: select
+      options:
+        - { value: android, label: Android }
+        - { value: ios, label: iOS }
+        - { value: web, label: Web }
+    environment:
+      type: select
+      options:
+        - { value: production, label: Production }
+        - { value: staging, label: Staging }
+        - { value: development, label: Development }
+  columns:
+    install_id: { label: Install, searchable: true }
+    platform:
+      labels:
+        - { value: android, label: Android }
+        - { value: ios, label: iOS }
+        - { value: web, label: Web }
+    environment: {}
+    app_version: { label: Version }
+    app_build: { label: Build }
+    os_version: { label: OS }
+    device_model: { label: Model, searchable: true }
+    locale: {}
+    last_seen_at: { type: datetime, label: Last seen }
+    first_seen_at: { type: datetime, label: First seen, invisible: true }
