@@ -16,12 +16,12 @@ plugin = "rainmill.mobile"
 [dependencies]
 # Laterite crates are version-only so this manifest is location-independent
 # (identical whether dev-symlinked under an app's plugins/ tree or vendored).
-laterite-core = "0.11"
-laterite-admin = "0.11"
+laterite-core = "0.12"
+laterite-admin = "0.12"
 # Store, signing and push credentials are vault items, each belonging to an app.
 rainmill-vault = "0.1"
 # A release's build files are media records, in the library or out of it.
-laterite-media = "0.11"
+laterite-media = "0.12"
 # Hashes an upload token; the token itself is never stored.
 blake3 = "1"
 rand = "0.8"
@@ -35,6 +35,6 @@ serde = { version = "1", features = ["derive"] }
 thiserror = "1"
 
 [dev-dependencies]
-laterite-media = "0.11"
-laterite-core = { version = "0.11", features = ["sqlite", "postgres", "testing"] }
+laterite-media = "0.12"
+laterite-core = { version = "0.12", features = ["sqlite", "postgres", "testing"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
