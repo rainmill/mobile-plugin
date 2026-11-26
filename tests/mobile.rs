@@ -165,6 +165,29 @@ async fn a_registered_build_gets_its_verdict_and_an_unregistered_one_is_unknown(
     );
     assert!(verdict.maintenance.is_none(), "maintenance was for staging");
     assert_eq!(verdict.flags.keys().collect::<Vec<_>>(), ["new_feed"]);
+
+    // A policy carries the application's conditions it waits on.
+    insert(
+        &db,
+        "mobile_policies",
+        &[
+            ("app_id", app.into()),
+            ("kind", "flag".into()),
+            ("key", "guestlist".into()),
+            ("value", "true".into()),
+            ("message", "".into()),
+            ("enabled", 1.into()),
+            ("dimensions", "location, plan".into()),
+        ],
+    )
+    .await;
+    let policies = store::policies(&db, app).await.unwrap();
+    let guestlist = policies.iter().find(|p| p.key == "guestlist").unwrap();
+    assert_eq!(guestlist.dimensions, ["location", "plan"]);
+    assert!(policies
+        .iter()
+        .filter(|p| p.key != "guestlist")
+        .all(|p| p.dimensions.is_empty()));
 }
 
 #[tokio::test]

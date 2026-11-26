@@ -146,6 +146,7 @@ pub async fn policies(db: &Db, app_id: i64) -> Result<Vec<Policy>, sqlx::Error> 
                     "percent",
                     "starts_at",
                     "ends_at",
+                    "dimensions",
                 ]
                 .map(Alias::new),
             )
@@ -187,6 +188,14 @@ pub async fn policies(db: &Db, app_id: i64) -> Result<Vec<Policy>, sqlx::Error> 
             percent: row.get_int_opt("percent")?,
             starts_at: some("starts_at")?,
             ends_at: some("ends_at")?,
+            dimensions: row
+                .get_text_opt("dimensions")?
+                .unwrap_or_default()
+                .split(',')
+                .map(str::trim)
+                .filter(|d| !d.is_empty())
+                .map(str::to_string)
+                .collect(),
         });
     }
     Ok(out)

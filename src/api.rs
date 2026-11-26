@@ -1,6 +1,7 @@
 //! The public endpoints: the check-in an app makes at startup, and the two
 //! files that let links to the site open in the app.
 
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use laterite_admin::axum::extract::State;
@@ -13,6 +14,7 @@ use laterite_core::serde_json::{json, Value};
 use laterite_core::Db;
 use serde::Deserialize;
 
+use crate::dimension::{self, TargetDimension, TargetDimensionReg};
 use crate::policy::{evaluate, Subject};
 use crate::store::{self, Seen};
 
@@ -53,6 +55,10 @@ pub struct Hello {
     /// The time zone (`Asia/Kolkata`).
     #[serde(default)]
     pub timezone: String,
+    /// What the request is about, by the application's dimensions:
+    /// `{ "location": "42" }`.
+    #[serde(default)]
+    pub context: BTreeMap<String, String>,
 }
 
 fn problem(status: StatusCode, kind: &str, detail: &str) -> Response {
@@ -69,7 +75,15 @@ fn now() -> String {
     chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
 }
 
-async fn hello(State(db): State<Db>, Json(hello): Json<Hello>) -> Response {
+/// What the check-in works with: the database and the registered dimensions.
+#[derive(Clone)]
+struct HelloState {
+    db: Db,
+    dimensions: Arc<Vec<Arc<dyn TargetDimension>>>,
+}
+
+async fn hello(State(state): State<HelloState>, Json(hello): Json<Hello>) -> Response {
+    let db = state.db;
     let install = hello.install_id.trim();
     if install.is_empty() || install.len() > 64 || hello.build < 0 {
         return problem(
@@ -116,6 +130,9 @@ async fn hello(State(db): State<Db>, Json(hello): Json<Hello>) -> Response {
             )
         }
     };
+    // A policy that is on is put to the application's own conditions; one
+    // that is off was never loaded.
+    let policies = dimension::allowed(&db, &state.dimensions, policies, &hello.context).await;
     let subject = Subject {
         platform: platform.kind.clone(),
         environment: platform.environment.clone(),
@@ -215,7 +232,15 @@ impl PublicRoute for HelloRoute {
     fn mount(&self, ctx: &RouteCtx) -> Router {
         Router::new()
             .route("/", post(hello))
-            .with_state(ctx.db().clone())
+            .with_state(HelloState {
+                db: ctx.db().clone(),
+                dimensions: Arc::new(
+                    ctx.contributions::<TargetDimensionReg>()
+                        .into_iter()
+                        .map(|reg| reg.0.clone())
+                        .collect(),
+                ),
+            })
     }
 }
 

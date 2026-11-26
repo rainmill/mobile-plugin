@@ -167,6 +167,7 @@ relations:
         min_build: { label: From build, input: number, min: 0, span: 1/3 }
         max_build: { label: Up to build, input: number, min: 0, span: 1/3 }
         locales: { span: 1/3, help: 'Comma separated, such as en, hi-IN.' }
+        dimensions: { label: Also depends on, help: 'Conditions of the application, comma separated, such as location. The policy applies only where each one allows it.' }
         starts_at: { label: From, span: 1/2, placeholder: '2026-11-20T18:00:00Z', help: 'UTC. Now when empty.' }
         ends_at: { label: Until, span: 1/2, placeholder: '2026-11-20T20:00:00Z', help: 'UTC. Until turned off when empty.' }
         note: { type: textarea, help: 'For the team; the app never sees it.' }

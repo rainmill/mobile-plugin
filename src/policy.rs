@@ -62,6 +62,9 @@ pub struct Policy {
     pub starts_at: Option<String>,
     /// Until this moment.
     pub ends_at: Option<String>,
+    /// The application's own conditions it waits on, by name. See
+    /// [`crate::dimension`].
+    pub dimensions: Vec<String>,
 }
 
 /// The install a verdict is for.
@@ -286,6 +289,7 @@ mod tests {
             percent: None,
             starts_at: None,
             ends_at: None,
+            dimensions: Vec::new(),
         }
     }
 

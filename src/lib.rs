@@ -9,6 +9,7 @@
 
 pub mod api;
 mod check;
+pub mod dimension;
 pub mod files;
 pub mod guide;
 mod migrations;

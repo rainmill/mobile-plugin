@@ -29,7 +29,8 @@ Content-Type: application/json
 
 { "app": "acme", "platform": "android", "identifier": "com.acme.app",
   "install_id": "5f0c…", "build": 42, "version": "1.4.0",
-  "os_version": "15", "device_model": "Pixel 9", "locale": "en-IN", "timezone": "Asia/Kolkata" }
+  "os_version": "15", "device_model": "Pixel 9", "locale": "en-IN", "timezone": "Asia/Kolkata",
+  "context": { "location": "42" } }
 ```
 
 ```json
@@ -47,6 +48,7 @@ Content-Type: application/json
 | --- | --- |
 | `update.level` | `none`, `soft` (may dismiss) or `hard` (must update) |
 | `maintenance` | `null`, or the message to show while the app is closed |
+| `context` (sent) | Optional. What the request is about, by the application's [dimensions](#target-dimensions) |
 | `flags` | Each flag by name: `true`, `false`, a number, text or JSON |
 | `banners` | Messages to show once each, by `key` |
 
@@ -141,3 +143,30 @@ The upload joins the release of that platform, build and track, making it as a d
 ## License
 
 MIT or Apache-2.0, at your option.
+
+## Target dimensions
+
+A policy can wait on a condition of the application's own: the place a request
+is about, the plan an account is on. The application registers the dimension,
+a policy lists its name under "Also depends on", and the app sends the value
+in the check-in's `context`.
+
+```rust
+use rainmill_mobile::dimension::{MobileRegistry, TargetDimension};
+
+struct Location;
+
+#[async_trait]
+impl TargetDimension for Location {
+    fn name(&self) -> &'static str { "location" }
+    async fn allows(&self, db: &Db, policy: &str, value: Option<&str>) -> bool {
+        place_allows(db, policy, value).await
+    }
+}
+
+registry.add_target_dimension(Arc::new(Location));
+```
+
+A policy that is switched off is never put to its dimensions. One that is on
+applies only where every dimension it lists allows it, and a name nobody
+registered never does.
